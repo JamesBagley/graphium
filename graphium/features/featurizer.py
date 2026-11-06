@@ -694,7 +694,9 @@ def mol_to_adj_and_features(
             to generate positional encoding for node features.
 
         dtype:
-            The torch data type used to build the graph
+            The numpy data type used to build the graph features. The
+            scipy sparse adjacency matrix is always built with a dtype
+            supported by scipy.sparse (e.g. float32 instead of float16).
 
         mask_nan:
             Deal with molecules that fail a part of the featurization.
@@ -708,7 +710,7 @@ def mol_to_adj_and_features(
     Returns:
 
         adj:
-            torch coo sparse adjacency matrix of the molecule
+            scipy coo sparse adjacency matrix of the molecule
 
         ndata:
             Concatenated node data of the atoms, based on the properties from
@@ -817,12 +819,19 @@ def mol_to_adjacency_matrix(
             node.
 
         dtype:
-            The data type used to build the graph
+            The data type used to build the graph. Not all dtypes are
+            supported by scipy.sparse (e.g. float16), in which case the
+            adjacency matrix is built with float32 instead.
 
     Returns:
         adj:
             coo sparse adjacency matrix of the molecule
     """
+
+    # scipy.sparse does not support all dtypes (e.g. float16). Ensure the
+    # adjacency matrix is built with a supported dtype.
+    if np.dtype(dtype) == np.float16:
+        dtype = np.float32
 
     # Get the indices for the adjacency matrix, and the bond value
     adj_idx, adj_val = [], []
@@ -1095,6 +1104,7 @@ def mol_to_graph_dict(
             use_bonds_weights=use_bonds_weights,
             pos_encoding_as_features=pos_encoding_as_features,
             mask_nan=mask_nan,
+            dtype=dtype,
         )
     except Exception as e:
         if on_error.lower() == "raise":
